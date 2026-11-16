@@ -1,0 +1,105 @@
+import tkinter as tk
+import threading
+import time
+import random
+import pyautogui
+
+# Tắt tính năng Fail-safe để tránh lỗi khi chuột vô tình chạm góc màn hình
+pyautogui.FAILSAFE = False
+
+class AntiAFKApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Anti-AFK Tool")
+        # Kích thước cửa sổ gọn gàng, luôn nổi trên cùng (topmost) để dễ bấm khi đang chơi game/ứng dụng
+        self.root.geometry("280x140")
+        self.root.resizable(False, False)
+        self.root.attributes("-topmost", True)
+
+        self.is_running = False
+
+        # Nhãn hiển thị trạng thái hiện tại
+        self.status_label = tk.Label(
+            root, 
+            text="Trạng thái: ĐANG TẮT", 
+            font=("Arial", 11, "bold"), 
+            fg="red"
+        )
+        self.status_label.pack(pady=(15, 10))
+
+        # Khung chứa 2 nút bấm
+        button_frame = tk.Frame(root)
+        button_frame.pack(pady=5)
+
+        # Nút ON (Cỡ vừa, màu xanh lá)
+        self.btn_on = tk.Button(
+            button_frame,
+            text="ON",
+            width=10,
+            height=2,
+            bg="#28a745",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            cursor="hand2",
+            command=self.turn_on
+        )
+        self.btn_on.pack(side=tk.LEFT, padx=10)
+
+        # Nút OFF (Cỡ vừa, màu đỏ, ban đầu bị khóa vì chưa bật)
+        self.btn_off = tk.Button(
+            button_frame,
+            text="OFF",
+            width=10,
+            height=2,
+            bg="#dc3545",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            cursor="hand2",
+            state=tk.DISABLED,
+            command=self.turn_off
+        )
+        self.btn_off.pack(side=tk.LEFT, padx=10)
+
+    def turn_on(self):
+        if not self.is_running:
+            self.is_running = True
+            self.status_label.config(text="Trạng thái: ĐANG BẬT", fg="#28a745")
+            self.btn_on.config(state=tk.DISABLED)
+            self.btn_off.config(state=tk.NORMAL)
+            
+            # Chạy tiến trình Anti-AFK trong một luồng riêng (threading) để giao diện không bị đơ
+            threading.Thread(target=self.afk_loop, daemon=True).start()
+
+    def turn_off(self):
+        if self.is_running:
+            self.is_running = False
+            self.status_label.config(text="Trạng thái: ĐANG TẮT", fg="red")
+            self.btn_on.config(state=tk.NORMAL)
+            self.btn_off.config(state=tk.DISABLED)
+
+    def afk_loop(self):
+        while self.is_running:
+            # Chọn ngẫu nhiên hành động giả lập (di chuyển chuột nhẹ hoặc nhấn phím)
+            action = random.choice(["move", "press_key"])
+            
+            if action == "move":
+                x_offset = random.randint(-30, 30)
+                y_offset = random.randint(-30, 30)
+                pyautogui.move(x_offset, y_offset, duration=0.2)
+                pyautogui.move(-x_offset, -y_offset, duration=0.2)
+            elif action == "press_key":
+                pyautogui.press("shift")
+
+            # Thời gian chờ ngẫu nhiên từ 25 đến 45 giây trước hành động tiếp theo
+            wait_time = random.randint(25, 45)
+            
+            # Chia nhỏ thời gian chờ thành các khoảng 1 giây để phản hồi nút OFF lập tức
+            for _ in range(wait_time):
+                if not self.is_running:
+                    break
+                time.sleep(1)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AntiAFKApp(root)
+    root.mainloop()
